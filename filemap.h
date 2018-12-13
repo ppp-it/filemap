@@ -263,7 +263,7 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
     /// \brief перечисление предопределенных режимов обработки объекта
     ///
-    enum class mode : uint32_t
+    enum class mode : uint64_t
     {
         /*! сам файл, страницы памяти и проекция файла с доступом только чтение.
          *  Другим потокам/процесам разрешен доступ на чтение.\n
@@ -308,7 +308,7 @@ public:
     /// \return ноль - выполнено успешно, иначе номер ошибки
     ///
 #if defined(OS_WIN)
-    uint32_t open_file_map ( uint32_t md_fl = GENERIC_READ,                /* mode file access      */
+    uint64_t open_file_map ( uint32_t md_fl = GENERIC_READ,                /* mode file access      */
                              uint32_t md_sh = SHARE_DENIED,                /* mode share access     */
                              uint32_t md_op = OPEN_EXISTING,               /* mode file open/create */
                              uint32_t md_at = FILE_ATTRIBUTE_NORMAL,       /* flag file attribute   */
@@ -316,7 +316,7 @@ public:
                              uint32_t md_mm = FILE_MAP_READ,               /* mode map access       */
                              uint64_t offset = 0 );                        /* смещение от начала    */
 #else
-    uint32_t open_file_map ( uint32_t md_fl = O_RDONLY,                    /* mode file access      */
+    uint64_t open_file_map ( uint32_t md_fl = O_RDONLY,                    /* mode file access      */
                              uint32_t md_op = NO_FLAG,                     /* mode file open/create */
                              uint32_t md_pp = PROT_READ,                   /* mode page protect     */
                              uint32_t md_mm = MAP_PRIVATE,                 /* mode map access       */
@@ -332,7 +332,7 @@ public:
     /// \return ноль - выполнено успешно, иначе номер ошибки
     /// @see CFileMap::mode
     ///
-    uint32_t open_file_map ( mode md, uint64_t offset = 0 );
+    uint64_t open_file_map ( mode md, uint64_t offset = 0 );
 
 public:
     ///////////////////////////////////////////////////////////////////////////////
@@ -415,7 +415,7 @@ public:
     /// \param str - строка для записи
     /// \return количество записанных байт
     ///
-    uint32_t write( std::string &str ) {
+    uint64_t write( std::string &str ) {
         return write( str.c_str(), str.length() );
     }
 
@@ -426,7 +426,7 @@ public:
     /// \param length - количство байт для записи
     /// \return количество записанных байт
     ///
-    uint32_t write( const char *str, size_t length );
+    uint64_t write( const char *str, uint64_t length );
 
 public:
     ///////////////////////////////////////////////////////////////////////////////
@@ -436,7 +436,7 @@ public:
     /// \param str - строка для записи
     /// \return количество записанных байт
     /// @see write
-    uint32_t write_line( std::string &str ) {
+    uint64_t write_line( std::string &str ) {
         str.append( m_new_line );
         return write( str.c_str(), str.length() );
     }
@@ -447,7 +447,7 @@ public:
     /// \param str - буфер для записи строки из файла
     /// \return количество прочитанных байт
     ///
-    uint32_t read_line( char *dest );
+    uint64_t read_line( char *dest );
 
 public:
     ///////////////////////////////////////////////////////////////////////////////
@@ -456,7 +456,7 @@ public:
     /// \param length - максимальное количество байт, которе может принять буфер
     /// \return количество прочитанных байт
     ///
-    uint32_t read( char *dest, size_t length );
+    uint64_t read( char *dest, uint64_t length );
 
 protected:
     ///////////////////////////////////////////////////////////////////////////////
@@ -480,8 +480,8 @@ protected:
     /// \brief получить максимальное количество оставшихся байт из проекции
     /// \return
     ///
-    inline uint64_t get_max_copy() const {
-        return m_max_copy;
+    inline uint32_t get_max_copy() const {
+        return (uint32_t)m_max_copy;
     }
 
 protected:
@@ -517,7 +517,7 @@ protected:
     /// внутри вызывает map_region
     /// \return ноль - выполнено успешно, иначе номер ошибки
     /// @see map_region()
-    uint32_t next_region();
+    uint64_t next_region();
 
 protected:
     ///////////////////////////////////////////////////////////////////////////////
@@ -550,7 +550,7 @@ protected:
     ///                        false - система сама выполнит синхронизацию\n
     /// \return ноль - выполнено успешно, иначе номер ошибки
     ///
-    uint32_t unmap_region( uint64_t size_region, bool sync = true );
+    uint64_t unmap_region( uint64_t size_region, bool sync = true );
 
 protected:
     ///////////////////////////////////////////////////////////////////////////////
@@ -561,7 +561,7 @@ protected:
     /// \param length  - количество байт, которые нужно скопировать
     /// \return количество записанных байт.
     ///
-    size_t write2memory ( const void *src_ptr, size_t length );
+    uint64_t write2memory ( const void *src_ptr, uint64_t length );
 
 protected:
     ///////////////////////////////////////////////////////////////////////////////
@@ -572,7 +572,7 @@ protected:
     /// \param length  - количество байт, которые нужно скопировать
     /// \return количество прочитанных байт.
     ///
-    size_t read_from_memory ( void *dest_ptr, size_t length );
+    uint64_t read_from_memory ( void *dest_ptr, uint64_t length );
 
 protected:
     ///////////////////////////////////////////////////////////////////////////////
@@ -592,27 +592,27 @@ protected:
 #       endif  // defined(OS_WIN)
     }
 
-private:
-    ///////////////////////////////////////////////////////////////////////////////
-    /// \brief подогнать газмер файла под размер данных
-    ///
-    void shrink_to_fit();
-
-private:
+protected:
     ///////////////////////////////////////////////////////////////////////////////
     /// \brief  конвентирует wstring utf16 в string utf8 используя std::wstring_convert, std::codecvt.
     /// \param  pwstr        wchar_t в формате utf16
     /// \return строка std::string (utf8)
     ///
-    std::string wchar_string ( const wchar_t *pwstr, size_t length = 0 );
+    std::string wchar_string( const wchar_t *pwstr, uint64_t length = 0 );
 
-private:
+protected:
     ///////////////////////////////////////////////////////////////////////////////
     /// \brief конвентирует string utf8 в wstring utf16 используя std::wstring_convert, std::codecvt.
     /// \param [in]     pstr     набор символов char (utf8)
     /// \return         строка std::wstring (utf16)
     ///
-    std::wstring char_wstring( const char *pstr, size_t length = 0 );
+    std::wstring char_wstring( const char *pstr, uint64_t length = 0 );
+
+private:
+    ///////////////////////////////////////////////////////////////////////////////
+    /// \brief подогнать газмер файла под размер данных
+    ///
+    void shrink_to_fit();
 
 private:
     ///////////////////////////////////////////////////////////////////////////////
@@ -625,7 +625,7 @@ private:
     /// в режиме, когда файл открыт целиком, выполняется условие:\n
     ///     m_file_size = m_offset.QuadPart + m_max_copy\n
     ///
-    void set_max_copy( size_t length = 0 );
+    void set_max_copy( uint64_t length = 0 );
 
 
 
@@ -697,7 +697,7 @@ private:
     ///  а используется в функции map_region
     /// @see CFileMap::open_file_map()
     /// @see CFileMap::map_region()
-    uint32_t m_map_mode;
+    DWORD m_map_mode;
 
 #   if ( defined(OS_LINUX) || defined(OS_UNUX) )
 private:
@@ -706,7 +706,7 @@ private:
     ///  передается параметром в функцию open_file_map
     ///  а используется в функции map_region только в *nix системах.
     ///
-    uint32_t m_page_protect;
+    uint64_t m_page_protect;
 #   endif  // defined(OS_WIN)
 
 #   if defined(OS_WIN)

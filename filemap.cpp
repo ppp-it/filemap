@@ -36,8 +36,12 @@
 
 #include "filemap.h"
 #include <iostream>
+#if defined(_MSC_VER)
+#include <tchar.h>
+#else
 #include <locale>       /* std::wstring_convert */
 #include <codecvt>      /* std::codecvt_utf8_utf16 */
+#endif
 
 using namespace std;
 
@@ -66,7 +70,11 @@ CFileMap::CFileMap( uint64_t limit_map_memory /*= 0*/ )
     set_limit_memory( limit_map_memory );
     m_sync = true;
 #if defined(OS_WIN)
-    strcpy( m_new_line, "\r\n" );
+#   if defined(__STDC_LIB_EXT1__) || defined(OS_WIN)
+    memcpy_s( m_new_line, 2, "\r\n", 2 );
+#   else
+    memcpy( m_new_line, "\r\n", 2 );
+#   endif
     m_return = false;
 #else
     strcpy( m_new_line, "\n" );
@@ -78,16 +86,13 @@ CFileMap::CFileMap( uint64_t limit_map_memory /*= 0*/ )
 // деструктор
 CFileMap::~CFileMap()
 {
-#   ifdef check_destuctor
-    cout<<"CFileMap::~CFileMap()."<<endl;
-#   endif // check_destuctor
     close_file_map();
 }   //  ~CFileMap()
 
 ///////////////////////////////////////////////////////////////////////////////
 // открыть файл для последющего отображения используя флаги
 #if defined(OS_WIN)
-uint32_t CFileMap::open_file_map(uint32_t md_fl /*=GENERIC_READ*/,         /* mode file access      */
+uint64_t CFileMap::open_file_map(uint32_t md_fl /*=GENERIC_READ*/,         /* mode file access      */
                                  uint32_t md_sh /*=SHARE_DENIED*/,         /* mode share access     */
                                  uint32_t md_op /*=OPEN_EXISTING*/,        /* mode file open/create */
                                  uint32_t md_at /*=FILE_ATTRIBUTE_NORMAL*/,/* flag file attribute   */
@@ -95,7 +100,7 @@ uint32_t CFileMap::open_file_map(uint32_t md_fl /*=GENERIC_READ*/,         /* mo
                                  uint32_t md_mm /*=FILE_MAP_READ*/,        /* mode map access       */
                                  uint64_t offset /*=0*/ )                  /* смещение от начала    */
 {
-    uint32_t last_error = 0;
+    uint64_t last_error = 0;
     m_return = false;
     m_offset.QuadPart = offset;
 
@@ -156,16 +161,16 @@ uint32_t CFileMap::open_file_map(uint32_t md_fl /*=GENERIC_READ*/,         /* mo
     }
 
     return last_error;
-}   //  open_file_map ( uint32_t md_fl, uint32_t md_sh, ...
+}   //  open_file_map ( uint64_t md_fl, uint64_t md_sh, ...
 #else
-uint32_t CFileMap::open_file_map(uint32_t md_fl /*=O_RDONLY*/,             /* mode file access      */
+uint64_t CFileMap::open_file_map(uint32_t md_fl /*=O_RDONLY*/,             /* mode file access      */
                                  uint32_t md_op /*=NO_FLAG*/,              /* mode file open/create */
                                  uint32_t md_pp /*=PROT_READ*/,            /* mode page protect     */
                                  uint32_t md_mm /*=MAP_PRIVATE*/,          /* mode map access       */
                                  uint64_t offset /*=0*/,                   /* смещение от начала    */
                                  mode_t mode /*=S_IRWXU|S_IRWXG|S_IROTH*/) /* задает права доступа  */
 {
-    uint32_t last_error = 0;
+    uint64_t last_error = 0;
     m_offset.QuadPart = offset;
 
     if ( md_fl == O_RDONLY )
@@ -209,14 +214,14 @@ uint32_t CFileMap::open_file_map(uint32_t md_fl /*=O_RDONLY*/,             /* mo
     }
 
     return last_error;;
-}   //  open_file_map ( uint32_t md_fl, uint32_t md_sh, ...
+}   //  open_file_map ( uint64_t md_fl, uint64_t md_sh, ...
 #endif  // defined(OS_WIN)
 
 ///////////////////////////////////////////////////////////////////////////////
 // открыть файл для последющего отображения используя предопределенный режим
-uint32_t CFileMap::open_file_map ( mode md, uint64_t offset /*= 0*/ )
+uint64_t CFileMap::open_file_map ( mode md, uint64_t offset /*= 0*/ )
 {
-    uint32_t last_error = 0;
+    uint64_t last_error = 0;
 
 #   if defined(OS_WIN)
     uint32_t md_fl = GENERIC_READ;           /* mode file access      */
@@ -289,7 +294,7 @@ uint32_t CFileMap::open_file_map ( mode md, uint64_t offset /*= 0*/ )
             throw last_error;
         }
     }
-    catch( uint32_t error ) {
+    catch( uint64_t error ) {
         last_error = error;
         cout<< "an error number \"" << error << "\" is generated in the method open_file_map" <<endl;
     }
@@ -301,7 +306,7 @@ uint32_t CFileMap::open_file_map ( mode md, uint64_t offset /*= 0*/ )
 // отражает файл (часть файла) в память
 uint64_t CFileMap::map_region ( uint64_t offset /*= 0*/, uint64_t size_region /*= 0*/ )
 {
-    uint32_t last_error = 0;
+    uint64_t last_error = 0;
 
     // если отражение было выполнено - освободим память
     if ( m_ptr_file ) {
@@ -335,7 +340,7 @@ uint64_t CFileMap::map_region ( uint64_t offset /*= 0*/, uint64_t size_region /*
                                                            *  файла, где начинается отображение. */
                                       m_offset.LowPart,   /*  Младшее двойное слово (DWORD) смещения
                                                            *  файла, где начинается отображение. */
-                                      size_region         /*  Число отображаемых байтов файла.
+                                      (SIZE_T)size_region /*  Число отображаемых байтов файла.
                                                            *  Если == 0, отображается весь файл.*/
                                       );
 
@@ -359,7 +364,7 @@ uint64_t CFileMap::map_region ( uint64_t offset /*= 0*/, uint64_t size_region /*
         }
 #   endif  // defined(OS_WIN)
     }
-    catch( uint32_t error ) {
+    catch( uint64_t error ) {
         cout<< "an error number \"" << error << "\" is generated in the method map_region" <<endl;
         m_ptr_file = nullptr;
     }
@@ -375,9 +380,9 @@ uint64_t CFileMap::map_region ( uint64_t offset /*= 0*/, uint64_t size_region /*
 
 ///////////////////////////////////////////////////////////////////////////////
 // снимет отражение в памяти (освобождает память)
-uint32_t CFileMap::unmap_region ( uint64_t size_region, bool sync /*= true*/ )
+uint64_t CFileMap::unmap_region ( uint64_t size_region, bool sync /*= true*/ )
 {
-    uint32_t last_error = 0;
+    uint64_t last_error = 0;
 
     if ( size_region == 0 )
         size_region = m_file_size.QuadPart;
@@ -397,9 +402,9 @@ uint32_t CFileMap::unmap_region ( uint64_t size_region, bool sync /*= true*/ )
                  * If the function succeeds, the return value is nonzero.
                  * If the function fails, the return value is zero.
                  * To get extended error information, call GetLastError. */
-                bError = ::FlushViewOfFile( m_ptr_file, size_region );
+                bError = ::FlushViewOfFile( m_ptr_file, (SIZE_T)size_region );
                 if ( bError == FALSE ) {
-                    uint32_t last_error = ::GetLastError();
+                    uint64_t last_error = ::GetLastError();
                     throw last_error ;
                 }
             }
@@ -413,12 +418,12 @@ uint32_t CFileMap::unmap_region ( uint64_t size_region, bool sync /*= true*/ )
             m_ptr_file = nullptr;
             m_address.map_ptr = m_ptr_file;
             if ( bError == FALSE ) {
-                uint32_t last_error = ::GetLastError();
+                uint64_t last_error = ::GetLastError();
                 throw last_error ;
             }
         }
     }
-    catch( uint32_t error ) {
+    catch( uint64_t error ) {
         last_error = error;
         cout<< "an error number \"" << error << "\" is generated in the method unmap_region" <<endl;
     }
@@ -434,7 +439,7 @@ uint32_t CFileMap::unmap_region ( uint64_t size_region, bool sync /*= true*/ )
                  * При ошибке оно равно -1, а переменной errno присваивается номер ошибки. */
                 res = ::msync( m_ptr_file, size_region, MS_ASYNC );
                 if ( res ) {
-                    uint32_t last_error = errno;
+                    uint64_t last_error = errno;
                     throw last_error ;
                 }
             }
@@ -447,12 +452,12 @@ uint32_t CFileMap::unmap_region ( uint64_t size_region, bool sync /*= true*/ )
             m_ptr_file = nullptr;
             m_address.map_ptr = m_ptr_file;
             if ( res ) {
-                uint32_t last_error = errno;
+                uint64_t last_error = errno;
                 throw last_error ;
             }
         }
     }
-    catch( uint32_t error ) {
+    catch( uint64_t error ) {
         cout<< "an error number \"" << error << "\" is generated in the method unmap_region" <<endl;
     }
 #   endif  // defined(OS_WIN)
@@ -462,7 +467,7 @@ uint32_t CFileMap::unmap_region ( uint64_t size_region, bool sync /*= true*/ )
 
 ///////////////////////////////////////////////////////////////////////////////
 // записать строку в файл
-uint32_t CFileMap::write( const char *str, size_t length )
+uint64_t CFileMap::write( const char *str, uint64_t length )
 {
     if ( eof() )
         return 0;
@@ -473,7 +478,7 @@ uint32_t CFileMap::write( const char *str, size_t length )
     }
 
     // счетчик скопированных байт
-    size_t copy2file = 0;
+    uint64_t copy2file = 0;
 
     // проверим, сколько байт можно записать/прочитать
     if ( length <= m_max_copy ) {
@@ -490,7 +495,7 @@ uint32_t CFileMap::write( const char *str, size_t length )
         } else {
             // файл открыт в режиме блочного доступа
             while ( length > m_max_copy ) {
-                size_t copied = write2memory( str+copy2file, m_max_copy );
+                uint64_t copied = write2memory( str+copy2file, m_max_copy );
                 length = length - copied;
                 copy2file = copy2file + copied;
                 if ( eof() )
@@ -513,11 +518,11 @@ uint32_t CFileMap::write( const char *str, size_t length )
         }
     }
     return copy2file;
-}   //  write( const char *str, size_t length )
+}   //  write( const char *str, uint64_t length )
 
 ///////////////////////////////////////////////////////////////////////////////
 // прочитать строку из файла
-uint32_t CFileMap::read_line( char *dest )
+uint64_t CFileMap::read_line( char *dest )
 {
     // указатель на проекцию очередного блока файла
     const char *file = nullptr;
@@ -554,7 +559,7 @@ uint32_t CFileMap::read_line( char *dest )
     // указатель на проекцию очередного блока файла
     file = (const char *)m_address.map_ptr;
     // счетчик скопированных байт
-    uint32_t length = sizeof(m_new_line);
+    uint64_t length = sizeof(m_new_line);
 
     // найдем символ новой строки
     while ( length <= m_max_copy ) {
@@ -585,7 +590,7 @@ uint32_t CFileMap::read_line( char *dest )
 
 ///////////////////////////////////////////////////////////////////////////////
 // прочитать данные из файла
-uint32_t CFileMap::read( char *dest, size_t length )
+uint64_t CFileMap::read( char *dest, uint64_t length )
 {
     if ( eof() )
         return 0;
@@ -598,7 +603,7 @@ uint32_t CFileMap::read( char *dest, size_t length )
         return 0;
 
     // счетчик скопированных байт
-    size_t copy_from_file = 0;
+    uint64_t copy_from_file = 0;
 
     // проверим, сколько байт можно записать/прочитать
     if ( length <= m_max_copy ) {
@@ -615,7 +620,7 @@ uint32_t CFileMap::read( char *dest, size_t length )
         } else {
             // файл открыт в режиме блочного доступа
             while ( length > m_max_copy ) {
-                size_t copied = read_from_memory( dest+copy_from_file, m_max_copy );
+                uint64_t copied = read_from_memory( dest+copy_from_file, m_max_copy );
                 length = length - copied;
                 copy_from_file = copy_from_file + copied;
                 if ( eof() )
@@ -631,7 +636,7 @@ uint32_t CFileMap::read( char *dest, size_t length )
         }
     }
     return copy_from_file;
-}   //  read( const char *dest, size_t length )
+}   //  read( const char *dest, uint64_t length )
 
 ///////////////////////////////////////////////////////////////////////////////
 // проверка выделеного региона и проекция следующего
@@ -655,7 +660,7 @@ void* CFileMap::check_map_region( uint64_t length )
 
 ///////////////////////////////////////////////////////////////////////////////
 // отразить в память следующую часть файла
-uint32_t CFileMap::next_region()
+uint64_t CFileMap::next_region()
 {
     // определим размер блока для проекции, что бы не выйти за границу файла
     uint64_t size_region = m_file_size.QuadPart - m_offset.QuadPart;
@@ -668,7 +673,7 @@ uint32_t CFileMap::next_region()
 
 ///////////////////////////////////////////////////////////////////////////////
 // установить максимальное количество байт доступных для чтения/записи
-void CFileMap::set_max_copy( size_t length /*= 0*/ )
+void CFileMap::set_max_copy( uint64_t length /*= 0*/ )
 {
     // проверим что есть проекция
     if ( m_ptr_file == 0 ) {
@@ -684,14 +689,14 @@ void CFileMap::set_max_copy( size_t length /*= 0*/ )
         m_max_copy = m_limit_memory - m_offset_block;
     else // файл целиком отражен в память
         m_max_copy = m_file_size.QuadPart - m_offset.QuadPart;
-}   //  set_max_copy( size_t length /*= 0*/ )
+}   //  set_max_copy( uint64_t length /*= 0*/ )
 
 ///////////////////////////////////////////////////////////////////////////////
 // копирует length байт из src_ptr в m_address.map_ptr
-size_t CFileMap::write2memory ( const void *src_ptr, size_t length )
+uint64_t CFileMap::write2memory ( const void *src_ptr, uint64_t length )
 {
 #   if defined(__STDC_LIB_EXT1__) || defined(OS_WIN)
-    int res = memcpy_s( m_address.map_ptr, m_max_copy, src_ptr, length );
+    int res = memcpy_s( m_address.map_ptr, (const rsize_t)m_max_copy, src_ptr, (const rsize_t)length );
     if ( res == 0 ) {
         m_address.map_mth = m_address.map_mth + length;
         set_max_copy( length );
@@ -713,10 +718,10 @@ size_t CFileMap::write2memory ( const void *src_ptr, size_t length )
 
 ///////////////////////////////////////////////////////////////////////////////
 // копирует length байт из m_address.map_ptr в dest_ptr
-size_t CFileMap::read_from_memory ( void *dest_ptr, size_t length )
+uint64_t CFileMap::read_from_memory ( void *dest_ptr, uint64_t length )
 {
 #   if defined(__STDC_LIB_EXT1__) || defined(OS_WIN)
-    int res = memcpy_s( dest_ptr, m_max_copy, m_address.map_ptr, length );
+    int res = memcpy_s( dest_ptr, (const rsize_t)m_max_copy, m_address.map_ptr, (const rsize_t)length );
     if ( res == 0 ) {
         m_address.map_mth = m_address.map_mth + length;
         set_max_copy( length );
@@ -734,7 +739,7 @@ size_t CFileMap::read_from_memory ( void *dest_ptr, size_t length )
         return 0;
     }
 #   endif
-}   //  read_from_memory ( void *dest_ptr, size_t length )
+}   //  read_from_memory ( void *dest_ptr, uint64_t length )
 
 ///////////////////////////////////////////////////////////////////////////////
 // закрывает объект
@@ -744,7 +749,7 @@ void CFileMap::close_file_map ( bool b_shrink_to_fit /*= false*/ )
     {
 
         if ( m_ptr_file ) {
-            uint32_t res = unmap_region( m_limit_memory );
+            uint64_t res = unmap_region( m_limit_memory );
             m_limit_memory = 0;
             if ( res ) {
                 throw res ;
@@ -764,11 +769,12 @@ void CFileMap::close_file_map ( bool b_shrink_to_fit /*= false*/ )
         }
         m_hFileMapping = INVALID_HANDLE_VALUE;
         if ( bError ) {
-            uint32_t last_error = ::GetLastError();
+            uint64_t last_error = ::GetLastError();
             throw last_error;
         }
 
-        if ( b_shrink_to_fit == true ) {
+        if ( m_file != INVALID_HANDLE_VALUE &&
+             b_shrink_to_fit == true ) {
             shrink_to_fit();
         }
 
@@ -781,7 +787,7 @@ void CFileMap::close_file_map ( bool b_shrink_to_fit /*= false*/ )
         }
         m_file = INVALID_HANDLE_VALUE;
         if ( bError ) {
-            uint32_t last_error = ::GetLastError();
+            uint64_t last_error = ::GetLastError();
             throw last_error ;
         }
 #       else
@@ -799,13 +805,13 @@ void CFileMap::close_file_map ( bool b_shrink_to_fit /*= false*/ )
         m_file = INVALID_HANDLE_VALUE;
 
         if ( res ) {
-            uint32_t last_error = errno;
+            uint64_t last_error = errno;
             throw last_error ;
         }
 #       endif  // defined(OS_WIN)
 
     }
-    catch( uint32_t error ) {
+    catch( uint64_t error ) {
         cout <<"an error number \""<< error <<"\" is generated in the method close" <<endl;
     }
 }   //  close_file_map ( bool b_shrink_to_fit /*= false*/ )
@@ -824,7 +830,7 @@ void CFileMap::shrink_to_fit()
              * Если функция не работает, возвращаемое значение равно нулю.
              * Чтобы получить расширенную информацию об ошибке, вызовите GetLastError. */
             if ( ::SetFilePointerEx( m_file, m_offset, NULL, FILE_BEGIN ) == 0 ) {
-                uint32_t last_error = ::GetLastError();
+                uint64_t last_error = ::GetLastError();
                 throw last_error;
             }
             /* Устанавливает физический размер файла для указанного файла
@@ -833,7 +839,7 @@ void CFileMap::shrink_to_fit()
              * Если функция не работает, возвращаемое значение равно нулю (0).
              * Чтобы получить расширенную информацию об ошибке, вызовите GetLastError. */
             if ( ::SetEndOfFile( m_file ) == 0 ) {
-                uint32_t last_error = ::GetLastError();
+                uint64_t last_error = ::GetLastError();
                 throw last_error;
             }
             m_file_size.QuadPart = m_offset.QuadPart;
@@ -845,7 +851,7 @@ void CFileMap::shrink_to_fit()
              * (off_t)-1 и errno показывает ошибку. */
             int result = ::lseek( m_file, m_offset.QuadPart, SEEK_SET );
             if ( result == INVALID_HANDLE_VALUE ) {
-                uint32_t last_error = errno;
+                uint64_t last_error = errno;
                 throw last_error;
             }
 
@@ -855,7 +861,7 @@ void CFileMap::shrink_to_fit()
              * При ошибке возвращается -1, а переменной errno присваивается номер ошибки. */
             result = ::ftruncate( m_file, m_offset.QuadPart );
             if ( result == INVALID_HANDLE_VALUE ) {
-                uint32_t last_error = errno;
+                uint64_t last_error = errno;
                 throw last_error;
             }
             m_file_size.QuadPart = m_offset.QuadPart;
@@ -863,52 +869,73 @@ void CFileMap::shrink_to_fit()
 #       endif  // defined(OS_WIN)
 
     }
-    catch( uint32_t error ) {
+    catch( uint64_t error ) {
         cout <<"an error number \""<< error <<"\" is generated in the method shrink_to_fit" <<endl;
     }
 }   //  shrink_to_fit()
 
 ///////////////////////////////////////////////////////////////////////////////
 // конвентирует wchar_t utf16 в string utf8 используя std::wstring_convert, std::codecvt.
-string CFileMap::wchar_string ( const wchar_t *pwstr, size_t length /*= 0*/ )
+// конвентирует wchar_t utf16 в string CP1251 используя wcstombs_s. (MSVC)
+string CFileMap::wchar_string ( const wchar_t *pwstr, uint64_t length /*= 0*/ )
 {
-    if ( !pwstr )
-      return string();
-    if ( !length )
+    #if defined(_MSC_VER)
+    size_t len = (size_t)length;
+    string text = "";
+    text.reserve( len );
+    text.resize( len );
+    wcstombs_s( &len, (char*)text.c_str(), len, pwstr, len );
+    return string( text );
+    #else
+    if (!pwstr)
+        return string();
+    if (!length)
         length = wcslen( pwstr );
     const wchar_t *first = pwstr;
-    const wchar_t *last  = pwstr + length;
+    const wchar_t *last = pwstr + length;
     wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> converter;
     return string( converter.to_bytes( first, last ) );
-}   //  wchar_string ( const wchar_t *pwstr, size_t length /*= 0*/ )
+    #endif
+}   //  wchar_string ( const wchar_t *pwstr, uint64_t length /*= 0*/ )
 
 ///////////////////////////////////////////////////////////////////////////////
 // конвентирует string utf8 в wstring utf16 используя std::wstring_convert, std::codecvt.
-std::wstring CFileMap::char_wstring( const char *pstr, size_t length /*= 0*/ )
+// конвентирует string cp1251 в wstring utf16 используя mbstowcs_s. (MSVC)
+std::wstring CFileMap::char_wstring( const char *pstr, uint64_t length /*= 0*/ )
 {
-    if ( !pstr )
+    #if defined(_MSC_VER)
+    size_t len = (size_t)length;
+    wstring text = L"";
+    text.reserve( len );
+    text.resize( len );
+    mbstowcs_s( &len, (wchar_t*)text.c_str(), len, pstr, len );
+    return wstring( text );
+    #else
+    if (!pstr)
         return std::wstring();
-    if ( !length )
+    if (!length)
         length = strlen( pstr );
     const char *first = pstr;
-    const char *last  = pstr + length;
+    const char *last = pstr + length;
     std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-#if defined(OS_WIN) && defined(__GNUC__)
+    #if defined(OS_WIN) && defined(__GNUC__)
     /* bug MinGW 6.3 */
     std::wstring wstr = converter.from_bytes( first, last );
-    for(std::size_t index=0; index < wstr.length(); index++) {
-        int lb = LOBYTE(wstr[index]);
-        int hb = HIBYTE(wstr[index]);
-        if ( lb ) {
+    for (std::uint64_t index = 0; index < wstr.length(); index++) {
+        int lb = LOBYTE( wstr[index] );
+        int hb = HIBYTE( wstr[index] );
+        if (lb) {
             wstr[index] = 0;
             wstr[index] = wstr[index] | hb;
-            wstr[index] = wstr[index] | (lb<<8);
-        } else {
+            wstr[index] = wstr[index] | (lb << 8);
+        }
+        else {
             wstr[index] = wstr[index] >> 8;
         }
     }
     return std::wstring( wstr.begin(), wstr.end() );
-#else
+    #else
     return std::wstring( converter.from_bytes( first, last ) );
-#endif  // defined(Q_OS_...)
-}
+    #endif  // defined(Q_OS_...)
+    #endif
+}   //  char_wstring
