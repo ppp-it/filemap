@@ -1,4 +1,5 @@
-# The projection of file in memory
+The projection of file in memory
+================================
 
 The object supports large files (>4Gb ).  
 The functionality allows you to project the file partially.  
@@ -11,7 +12,8 @@ Inheritance allows you to point directly to data in a socket, eliminating
 additional read/write operations and unnecessary buffers.
 
 an example of using inheritance:
-```
+--------------------------------
+```C++
    /*
     1. object initialization  */
 	
