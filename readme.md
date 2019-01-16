@@ -46,14 +46,11 @@ an example of using inheritance:
    ...
    
    read_size = min( read_size, get_max_copy() );   
-   bytes_sent = send( get_map_address(), read_size );  // sending data of size read_size
-   
-   /* bytes_sent - количество отправленных байт */   
-  
+   bytes_sent = send( get_map_address(), read_size );  // sending data of size read_size   
+   /* bytes_sent - number of bytes sent */  
   
    /* equivalent to reading from a file - just increase the pointer    
-    * to the number of bytes sent */
-	
+    * to the number of bytes sent */	
    check_map_region( bytes_sent );
    
    ...
@@ -63,9 +60,22 @@ an example of using inheritance:
 	the function receive() takes the size of a read buffer   */
 	
    ...
+   read_size = m_buff_size;
+   
+    /* after setting the position in the file, 
+     * check the size of the next block to read in order not to go beyond the boundaries of the file */
+    if (read_size > ( file_size - file_start ))
+	read_size = ( file_size - file_start);
+
+    /* check that the projection allows you to write the desired number of bytes */
+    read_size = min( read_size, (uint64_t)get_max_copy() );
    
    // get data from socket   
-   bytes_received = receive( get_max_copy() );  // read based on maximum buffer size   
+   bytes_received = receive( get_map_address(), (size_t)read_size );  // read based on maximum buffer size 
+   /* bytes_sent - number of bytes received */
+   
+   /* equivalent to writing to a file-just increase the pointer 
+    * to the number of bytes received from the socket */
    check_map_region( bytes_received );
    
    ...
